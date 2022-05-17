@@ -1,0 +1,5 @@
+sam local invoke -e events/event.json 2>&1 | % {$_.ToString().replace("`r`n","`n")} | Tee-Object -Variable out; Out-File -InputObject $out sam.log -Encoding utf8
+
+
+114,625
+160,601

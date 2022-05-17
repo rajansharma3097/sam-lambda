@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
+      "receiptHandle": "MessageReceiptHandle",
+      "body": "{\"accountId\":6856,\"accountNumber\":\"3804570\",\"prospectNumber\":null,\"membershipType\":1,\"membershipStatus\":null,\"cashDrawerId\":0,\"salesPersonId\":0,\"terminalId\":\"\",\"signatureImage\":null,\"signatureImageType\":null,\"members\":[{\"contacts\":[{\"accountMemberContactId\":0,\"accountMemberId\":0,\"contactTypeId\":4,\"contactValue\":\"devqa@asfpaymentsolutions.com\"},{\"accountMemberContactId\":0,\"accountMemberId\":0,\"contactTypeId\":1,\"contactValue\":\"7777777777\"}],\"attributes\":[],\"beltRankId\":0,\"accountMemberId\":10819,\"accountId\":6856,\"accountNumber\":\"3804570\",\"accountSequence\":\"01\",\"namePrefix\":\"\",\"firstName\":\"TestSess\",\"middleName\":\"\",\"lastName\":\"Tester\",\"nameSuffix\":\"\",\"gender\":1,\"birthday\":\"1960-05-06\",\"address1\":\"9127 S JAMAICA ST\",\"address2\":\"\",\"city\":\"ENGLEWOOD\",\"state\":\"CO\",\"postalCode\":\"80112\",\"country\":\"USA\",\"authority\":true,\"active\":true,\"alternateAccount\":\"\",\"lastModified\":\"2020-01-03\",\"lastModifiedBy\":\"S0000013\"}],\"offerFees\":{\"clientOfferId\":0,\"clientId\":4005,\"offerPaymentTermId\":0,\"discountCode\":null,\"adjustments\":null,\"adjustmentsApplied\":false,\"signatureRequired\":false,\"maxAdditionalCardholders\":0,\"additionalCardholderCount\":0,\"additionalCardholderFeeAmount\":0.0,\"adminFeePercentage\":0.0,\"creditCardFeePercentage\":0.0,\"paymentAmount\":0.0,\"totalPayments\":0,\"initialTotalPayments\":0,\"signupFees\":{\"offerItemDetails\":null,\"signupDues\":0.0,\"signupDuesAdjusted\":0.0,\"signupDuesAdminFee\":0.0,\"signupDuesCreditCardFee\":0.0,\"cardholderTotalSignupDues\":0.0,\"cardholderTotalSignupDuesAdjusted\":0.0,\"cardholderTotalSignupDuesAdminFee\":0.0,\"cardholderTotalSignupDuesCreditCardFee\":0.0,\"subtotal\":0.0,\"taxTotal\":0.0,\"discountTotal\":0.0,\"adminFee\":0.0,\"creditCardFee\":0.0,\"finalTotal\":0.0,\"paidWithCreditCard\":false},\"recurringFees\":{\"paymentFrequency\":null,\"remainingPayments\":0,\"paymentDues\":0.0,\"paymentDuesAdjusted\":0.0,\"paymentDuesAdminFee\":0.0,\"paymentDuesCreditCardFee\":0.0,\"cardholderTotalDues\":0.0,\"cardholderTotalDuesAdjusted\":0.0,\"cardholderTotalDuesAdminFee\":0.0,\"cardholderTotalDuesCreditCardFee\":0.0,\"discountTotal\":0.0,\"adminFee\":0.0,\"creditCardFee\":0.0,\"perPaymentTotal\":0.0,\"finalContractTotal\":0.0,\"paidWithCreditCard\":false},\"addonFees\":[],\"offerMemberAttributes\":null,\"offerExceptionDetails\":null,\"sessionBuckets\":null,\"offerContractDates\":null,\"today\":\"0001-01-01\",\"offerPresetRenewalTerm\":null,\"presetRenewalFees\":{\"renewalLength\":0,\"numberOfPayments\":0,\"paymentAmount\":0.0,\"additionalCardholderFeeTotal\":0.0,\"perPaymentTotal\":0.0,\"finalContractTotal\":0.0},\"hasDiscountCodes\":false},\"payment\":null,\"offerPresetRenewalPaymentTerm\":null,\"genericTerms\":null,\"note\":null,\"emergencyContacts\":null,\"enteredBy\":\"4005\"}",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1523232000000",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1523232000001"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "7b270e59b47ff90a553787216d55d91d",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:MyQueue",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}

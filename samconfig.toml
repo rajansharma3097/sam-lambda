@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "kill-bill-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-ghcj2zq3n0hu"
+s3_prefix = "kill-bill-app"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
