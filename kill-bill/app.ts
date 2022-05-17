@@ -6,7 +6,7 @@ import { KillBillRequest } from './models/kill-bill-request';
 import SQS, { SendMessageRequest } from 'aws-sdk/clients/sqs';
 import { KillBillAccount } from './models/killbill-account';
 
-// Configure the region and version
+// Configure the region and version 
 const sqs = new SQS({ region: 'us-east-1' });
 const queueUrl = 'https://sqs.us-east-1.amazonaws.com/773231913983/sqs-lambda-queue';
 
