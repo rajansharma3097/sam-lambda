@@ -8,7 +8,22 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
+    Runtime: nodejs16.x
     Timeout: 30
+    Architectures:
+        - x86_64
+
+Parameters:
+  Stage:
+    Type: String
+    Default: test
+    AllowedValues:
+      - test
+      - dev
+      - prod
+  Region:
+    Type: String
+    Default: us-east-1
 
 Resources:
   KillBillCall:
@@ -16,16 +31,21 @@ Resources:
     Properties:
       Description: A Lambda function to hit Kill Bill API and push the response to SQS queue.
       CodeUri: kill-bill/
-      Handler: app.lambdaHandler
-      Runtime: nodejs14.x
-      Architectures:
-        - x86_64
+      Handler: handlers/app.lambdaHandler
       Events:
         KillBillTrigger:
           Type: SQS
           Properties:
             Queue: !GetAtt InboundQueue.Arn
             BatchSize: 1
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt OutboundQueue.QueueName
+      Environment:
+        Variables:
+          STAGE: !Ref Stage
+          OUTBOUND_QUEUE: !GetAtt OutboundQueue.Arn
+          REGION: !Ref Region
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -33,8 +53,31 @@ Resources:
         Target: "es2020"
         Sourcemap: true
         EntryPoints: 
-        - app.ts
+        - handlers/app.ts
+  GetCatalogPlanApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: A Lambda function to get plan/product detail from Catalog DynamoDB using GET Request.
+      CodeUri: kill-bill/
+      Handler: handlers/get-plan.handler
+      MemorySize: 128
+      Events:
+        GetPlan:
+          Type: Api
+          Properties:
+            Path: /catalog
+            Method: get
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - handlers/get-plan.ts
   InboundQueue:
+    Type: AWS::SQS::Queue
+  OutboundQueue:
     Type: AWS::SQS::Queue
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
@@ -46,3 +89,6 @@ Outputs:
   KillBillCallIamRole:
     Description: "Implicit IAM Role created for Kill Bill Call"
     Value: !GetAtt KillBillCallRole.Arn
+  GetCatalogPlanApi:
+    Description: 'API Gateway endpoint URL for Prod stage for Get Catalog Plan Function'
+    Value: !Sub 'https://${GetCatalogPlanApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/'
