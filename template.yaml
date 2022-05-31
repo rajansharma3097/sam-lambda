@@ -29,6 +29,11 @@ Parameters:
     Default: kb-catalog
 
 Resources:
+  CatalogApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: Catalog Plugin Api Gateway
+      StageName: Prod
   KillBillCall:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -49,6 +54,7 @@ Resources:
           STAGE: !Ref Stage
           OUTBOUND_QUEUE: !GetAtt OutboundQueue.Arn
           REGION: !Ref Region
+          API_ENDPOINT: !Sub 'https://${CatalogApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/catalog'
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -74,6 +80,7 @@ Resources:
         GetPlan:
           Type: Api
           Properties:
+            RestApiId: !Ref CatalogApiGateway
             Path: /catalog
             Method: get
     Metadata: # Manage esbuild properties
@@ -87,7 +94,7 @@ Resources:
   PostCatalogPlanApi:
     Type: AWS::Serverless::Function
     Properties:
-      Description: A Lambda function to get plan/product detail from Catalog DynamoDB using GET Request.
+      Description: A Lambda function to add plan/product detail from Catalog DynamoDB using POST Request.
       CodeUri: kill-bill/
       Handler: handlers/post-plan.handler
       MemorySize: 128
@@ -101,6 +108,7 @@ Resources:
         GetPlan:
           Type: Api
           Properties:
+            RestApiId: !Ref CatalogApiGateway
             Path: /catalog
             Method: post
     Metadata: # Manage esbuild properties
@@ -127,4 +135,16 @@ Outputs:
     Value: !GetAtt KillBillCallRole.Arn
   GetCatalogPlanApi:
     Description: 'API Gateway endpoint URL for Prod stage for Get Catalog Plan Function'
-    Value: !Sub 'https://${GetCatalogPlanApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/catalog/'
+    Value: !Sub 'https://${GetCatalogPlanApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/catalog'
+  CatalogApiGateway:
+    Description: 'API Gateway endpoint URL for Prod stage for Catalog Get/Post functions'
+    Value: !Sub 'https://${CatalogApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/catalog'
+  CatalogApiGatewayRestApiId:
+    Description: 'API Gateway ARN for Catalog API Gateway'
+    Value: !Ref CatalogApiGateway
+    Export:
+      Name: CatalogApiGateway-RestApiId
+  CatalogApiGatewayRootResourceId:
+    Value: !GetAtt CatalogApiGateway.RootResourceId
+    Export:
+      Name: CatalogApiGateway-RootResourceId

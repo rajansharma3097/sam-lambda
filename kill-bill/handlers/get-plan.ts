@@ -7,7 +7,7 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
     let response: APIGatewayProxyResult;
     try {
         if (event.httpMethod !== 'GET') {
-            throw new Error(`getMethod only accept GET method, you tried: ${event.httpMethod}`);
+            throw new Error(`This endpoint only accept GET method, you tried: ${event.httpMethod}`);
         }
         if (!event.queryStringParameters?.tennant) {
             throw new Error('Please provide tennant parameter!');

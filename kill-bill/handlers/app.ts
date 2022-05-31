@@ -2,12 +2,11 @@ import { SQSEvent } from 'aws-lambda';
 import { AccountMember } from '../models/account-member';
 import { AccountMembership } from '../models/account-membership';
 import SQS, { SendMessageRequest } from 'aws-sdk/clients/sqs';
-import { KillBillAccount } from '../models/killbill-account';
 import { getKillBillCredentials } from '../helpers/secretsmanager';
 import { KBSecrets } from '../models/kb-secrets';
 import KillBillClient from '../helpers/killbillclient';
-import { Account } from 'killbill';
-import { AxiosError } from 'axios';
+import { Account, Subscription } from 'killbill';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 
 // Configure the region and version
 const sqs = new SQS({ region: 'us-east-1' });
@@ -48,7 +47,7 @@ async function requestKillBill(memberDetail: AccountMember) {
         isSubscriptionExist = true;
 
         // Push Data to Outbound Queue
-        await pushAccountInfoToOutboundQueue(accountDetail.data);
+        await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
     } catch (err: any) {
         console.log('Account error', err.response);
     }
@@ -67,49 +66,47 @@ async function requestKillBill(memberDetail: AccountMember) {
             isAccountExist = true;
             accountDetail = await killbillObject.getAccountByKey(memberDetail.accountNumber);
 
-            // Hit Catalog API to get Plan Object
-            const catalogResponse = await callCatalogApi(memberDetail);
-            // Create Subscription for this Account
-            const subsRequest = {
-                accountId: accountDetail.data.accountId,
-                externalKey: memberDetail.accountNumber,
-                planName: 'PLAN-2766',
-                // productName: '',
-                // billingPeriod: SubscriptionBillingPeriodEnum.DAILY,
-                // priceList: ''
-            };
-            subscriptionDetail = await killbillObject.createSubscription(subsRequest);
+            // Create KB Subscription
+            const subscriptionDetail = await createKBSubscription(killbillObject, memberDetail, accountDetail.data);
+
             isSubscriptionExist = true;
+            console.log(subscriptionDetail);
+
             // Push Data to Outbound Queue
-            await pushAccountInfoToOutboundQueue(accountDetail.data);
+            await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
         } catch (err) {
-            const error = err as AxiosError<{ message: string }>;
-            console.log('Account Creation Error', error.response);
+            let message = 'Internal server error';
+            if (err instanceof AxiosError) {
+                message = err.response?.data.message || 'Internal server error';
+            } else if (err instanceof Error) {
+                message = err.message;
+            }
+            // Push data to error queue
+            console.log('Subscription Creation Error', message);
         }
     }
 
     // If Account exists/created, but subscription is not created
     if (isAccountExist && accountDetail && !isSubscriptionExist) {
         try {
-            // Hit Catalog API to get Plan Object
-            const catalogResponse = await callCatalogApi(memberDetail);
-            // Create Subscription for this Account
-            const subsRequest = {
-                accountId: accountDetail?.data.accountId,
-                externalKey: memberDetail.accountNumber,
-                planName: 'PLAN-2766',
-                // productName: '',
-                // billingPeriod: SubscriptionBillingPeriodEnum.DAILY,
-                // priceList: ''
-            };
-            subscriptionDetail = await killbillObject.createSubscription(subsRequest);
+            // Create KB Subscription
+            const subscriptionDetail = await createKBSubscription(killbillObject, memberDetail, accountDetail.data);
+
             isSubscriptionExist = true;
             console.log(subscriptionDetail);
+
             // Push Data to Outbound Queue
-            // await pushAccountInfoToOutboundQueue(accountDetail.data);
+            await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
         } catch (err) {
-            const error = err as AxiosError<{ message: string }>;
-            console.log('Subscription Creation Error', error.response);
+            console.log(err);
+            let message = 'Internal server error';
+            if (err instanceof AxiosError) {
+                message = err.response?.data.message || 'Internal server error';
+            } else if (err instanceof Error) {
+                message = err.message;
+            }
+            // Push data to error queue
+            console.log('Subscription Creation Error', message);
         }
     }
 
@@ -139,19 +136,63 @@ async function requestKillBill(memberDetail: AccountMember) {
     //     });
 }
 
-async function pushAccountInfoToOutboundQueue(accountData: KillBillAccount | object) {
-    const sqsKillBillOutData: SendMessageRequest = {
-        MessageBody: JSON.stringify(accountData),
-        QueueUrl: queueUrl,
+async function createKBSubscription(killbillObject: KillBillClient, memberDetail: AccountMember, kbAccount: Account) {
+    // Hit Catalog API to get Plan Object
+    const catalogResponse = await callCatalogApi(memberDetail, kbAccount);
+    if (!catalogResponse) {
+        throw new Error('Unable to get plan from Catalog API.');
+    }
+    console.log(catalogResponse);
+    // Create Subscription for this Account
+    const subsRequest = {
+        accountId: kbAccount.accountId,
+        externalKey: memberDetail.accountNumber,
+        planName: catalogResponse.products[0].plans[0].name,
     };
-    console.log(sqsKillBillOutData);
-    const sendSqsMessage = await sqs.sendMessage(sqsKillBillOutData).promise();
-    console.log('SQS Response:', sendSqsMessage);
+    return await killbillObject.createSubscription(subsRequest);
 }
 
 /**
  * Call Catalog API to get plan name
  */
-async function callCatalogApi(memberDetail: AccountMember) {
+async function callCatalogApi(memberDetail: AccountMember, kbAccount: Account) {
+    console.log('Endpoint', process.env.API_ENDPOINT);
     // implement later
+    // const catalogEndpoint =
+    //     process.env.API_ENDPOINT || 'https://7f7jv8azlh.execute-api.us-east-1.amazonaws.com/Prod/catalog';
+    const catalogEndpoint = 'https://7f7jv8azlh.execute-api.us-east-1.amazonaws.com/Prod/catalog';
+    return await axios
+        .post(catalogEndpoint, {
+            accountId: kbAccount.accountId,
+            asfObject: memberDetail,
+        })
+        .then((response: AxiosResponse) => {
+            console.log(response);
+            if (response.status === 200) {
+                return response.data;
+            }
+        })
+        .catch(async (reason: AxiosError<{ message: string }>) => {
+            console.log('callCatalogApi catch', reason);
+            return false;
+        });
+}
+
+/**
+ * Send KB Account and Subscription Data to Outbound Queue
+ * @param kbAccount
+ * @param subsData
+ */
+async function pushAccountInfoToOutboundQueue(kbAccount: Account, subsData: Subscription) {
+    const outboundData = {
+        accountInfo: kbAccount,
+        subscriptionData: subsData,
+    };
+    const sqsKillBillOutData: SendMessageRequest = {
+        MessageBody: JSON.stringify(outboundData),
+        QueueUrl: queueUrl,
+    };
+    console.log(sqsKillBillOutData);
+    const sendSqsMessage = await sqs.sendMessage(sqsKillBillOutData).promise();
+    console.log('SQS Response:', sendSqsMessage);
 }

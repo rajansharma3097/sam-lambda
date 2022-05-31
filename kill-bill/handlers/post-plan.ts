@@ -7,7 +7,7 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
     let response: APIGatewayProxyResult;
     try {
         if (event.httpMethod !== 'POST') {
-            throw new Error(`postMethod only accepts POST method, you tried: ${event.httpMethod} method.`);
+            throw new Error(`This endpoint only accepts POST method, you tried: ${event.httpMethod} method.`);
         }
         // if (!event.queryStringParameters?.tennant) {
         //     throw new Error('Please provide tennant parameter!');
@@ -17,13 +17,21 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
         //     throw new Error('Please provide accountId parameter!');
         // }
 
-        // const accountId = event.queryStringParameters?.accountId;
-        // const client = new CustomDynamoClient(catalogTable);
-        // const item = await client.read(accountId);
         const body = event.body ? JSON.parse(event.body) : {};
+        if (!body.accountId) {
+            throw new Error('accountId is required!');
+        }
+
+        const accountId = body.accountId;
+        const client = new CustomDynamoClient(catalogTable);
+        const item = await client.read(accountId);
+        // Pending Code
+        if (!item) {
+            throw new Error('Unable to fetch any plan from catalog!!');
+        }
         response = {
             statusCode: 200,
-            body: JSON.stringify(body),
+            body: JSON.stringify(item),
         };
     } catch (err) {
         let message = 'some error happened';
