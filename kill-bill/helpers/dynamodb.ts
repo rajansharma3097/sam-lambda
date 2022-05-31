@@ -11,15 +11,10 @@ export default class CustomDynamoClient {
         this.table = table;
     }
 
-    async readAll() {
-        const data = await this.docClient.scan({ TableName: this.table }).promise();
-        return data.Items;
-    }
-
-    async read(id: any) {
+    async read(id: string) {
         const params = {
             TableName: this.table,
-            Key: { id: id },
+            Key: { accountId: id },
         };
         const data = await this.docClient.get(params).promise();
         return data.Item;

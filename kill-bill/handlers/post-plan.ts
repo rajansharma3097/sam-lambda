@@ -6,24 +6,24 @@ const catalogTable = process.env.CATALOGTABLE || 'kb-catalog';
 export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
     try {
-        if (event.httpMethod !== 'GET') {
-            throw new Error(`getMethod only accept GET method, you tried: ${event.httpMethod}`);
+        if (event.httpMethod !== 'POST') {
+            throw new Error(`postMethod only accepts POST method, you tried: ${event.httpMethod} method.`);
         }
-        if (!event.queryStringParameters?.tennant) {
-            throw new Error('Please provide tennant parameter!');
-        }
+        // if (!event.queryStringParameters?.tennant) {
+        //     throw new Error('Please provide tennant parameter!');
+        // }
 
-        if (!event.queryStringParameters?.accountId) {
-            throw new Error('Please provide accountId parameter!');
-        }
+        // if (!event.queryStringParameters?.accountId) {
+        //     throw new Error('Please provide accountId parameter!');
+        // }
 
-        const accountId = event.queryStringParameters?.accountId;
-        const client = new CustomDynamoClient(catalogTable);
-        const item = await client.read(accountId);
-
+        // const accountId = event.queryStringParameters?.accountId;
+        // const client = new CustomDynamoClient(catalogTable);
+        // const item = await client.read(accountId);
+        const body = event.body ? JSON.parse(event.body) : {};
         response = {
             statusCode: 200,
-            body: JSON.stringify(item),
+            body: JSON.stringify(body),
         };
     } catch (err) {
         let message = 'some error happened';

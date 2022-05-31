@@ -24,6 +24,9 @@ Parameters:
   Region:
     Type: String
     Default: us-east-1
+  CatalogTable:
+    Type: String
+    Default: kb-catalog
 
 Resources:
   KillBillCall:
@@ -61,6 +64,12 @@ Resources:
       CodeUri: kill-bill/
       Handler: handlers/get-plan.handler
       MemorySize: 128
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          CATALOGTABLE: !Ref CatalogTable
       Events:
         GetPlan:
           Type: Api
@@ -75,6 +84,33 @@ Resources:
         Sourcemap: true
         EntryPoints: 
         - handlers/get-plan.ts
+  PostCatalogPlanApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: A Lambda function to get plan/product detail from Catalog DynamoDB using GET Request.
+      CodeUri: kill-bill/
+      Handler: handlers/post-plan.handler
+      MemorySize: 128
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          CATALOGTABLE: !Ref CatalogTable
+      Events:
+        GetPlan:
+          Type: Api
+          Properties:
+            Path: /catalog
+            Method: post
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - handlers/post-plan.ts
   InboundQueue:
     Type: AWS::SQS::Queue
   OutboundQueue:
@@ -91,4 +127,4 @@ Outputs:
     Value: !GetAtt KillBillCallRole.Arn
   GetCatalogPlanApi:
     Description: 'API Gateway endpoint URL for Prod stage for Get Catalog Plan Function'
-    Value: !Sub 'https://${GetCatalogPlanApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/'
+    Value: !Sub 'https://${GetCatalogPlanApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/catalog/'
