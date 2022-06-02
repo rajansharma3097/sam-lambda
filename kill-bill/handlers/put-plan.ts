@@ -17,32 +17,20 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
             throw new Error('accountId is required!');
         }
 
-        const accountId = body.accountId;
-        const client = new CustomDynamoClient(catalogTable);
-        const existedItem = await client.read(accountId);
-
-        if (existedItem) {
-            return {
-                statusCode: 200,
-                body: JSON.stringify(existedItem),
-            };
-        }
-
         const catalogObject = extractCatalogObject(body.asfObject);
         const catalogPostObject = { accountId: body.accountId, ...catalogObject };
 
-        const isAdded = await client.write(catalogPostObject);
+        const client = new CustomDynamoClient(catalogTable);
+        const item = await client.write(catalogPostObject);
 
-        if (!isAdded) {
+        if (!item) {
             throw new Error('Unable to add plan in catalog database!!');
         }
-        const item = await client.read(accountId);
         response = {
             statusCode: 200,
             body: JSON.stringify(item),
         };
     } catch (err) {
-        console.log(err);
         let message = 'some error happened';
         if (err instanceof Error) {
             message = err.message;

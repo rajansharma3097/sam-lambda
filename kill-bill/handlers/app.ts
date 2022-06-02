@@ -1,6 +1,5 @@
 import { SQSEvent } from 'aws-lambda';
 import { AccountMember } from '../models/account-member';
-import { AccountMembership } from '../models/account-membership';
 import SQS, { SendMessageRequest } from 'aws-sdk/clients/sqs';
 import { getKillBillCredentials } from '../helpers/secretsmanager';
 import { KBSecrets } from '../models/kb-secrets';
@@ -15,12 +14,12 @@ const queueUrl = process.env.OUTBOUND_QUEUE || 'https://sqs.us-east-1.amazonaws.
 export const lambdaHandler = async (event: SQSEvent): Promise<void> => {
     try {
         console.log(event);
-        const accountMembership: AccountMembership = JSON.parse(event.Records[0].body);
+        const accountMember: AccountMember = JSON.parse(event.Records[0].body);
 
-        const member: AccountMember | undefined = accountMembership.members.find((member) => member.authority === true);
+        // const member: AccountMember | undefined = accountMembership.members.find((member) => member.authority === true);
 
-        if (member) {
-            await requestKillBill(member);
+        if (accountMember) {
+            await requestKillBill(accountMember);
         }
     } catch (err) {
         console.log('first catch', err);
@@ -59,6 +58,10 @@ async function requestKillBill(memberDetail: AccountMember) {
     // If account doesn't exist create a new account
     if (!isAccountExist) {
         const accountRequest: Account = { externalKey: memberDetail.accountNumber };
+        const member = memberDetail.members.find((member) => member.authority === true);
+        if (member) {
+            accountRequest.name = `${member.firstName} ${member.lastName}`;
+        }
         try {
             const createdAccountDetail = await killbillObject.createAccount(accountRequest);
             console.log(createdAccountDetail);
@@ -67,13 +70,13 @@ async function requestKillBill(memberDetail: AccountMember) {
             accountDetail = await killbillObject.getAccountByKey(memberDetail.accountNumber);
 
             // Create KB Subscription
-            const subscriptionDetail = await createKBSubscription(killbillObject, memberDetail, accountDetail.data);
+            // const subscriptionDetail = await createKBSubscription(killbillObject, memberDetail, accountDetail.data);
 
-            isSubscriptionExist = true;
-            console.log(subscriptionDetail);
+            // isSubscriptionExist = true;
+            // console.log(subscriptionDetail);
 
             // Push Data to Outbound Queue
-            await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
+            // await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
         } catch (err) {
             let message = 'Internal server error';
             if (err instanceof AxiosError) {

@@ -1,24 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface AccountMember {
-    accountMemberId: number;
     accountId: number;
     accountNumber: string;
-    accountSequence: string;
-    firstName: string;
-    middleName: string;
-    lastName: string;
-    gender: AccountMemberGender;
-    birthday: string;
-    address1: string;
-    address2: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    authority: boolean;
-    active: boolean;
-    alternateAccount: string;
-    lastModified: string;
-    lastModifiedBy: string;
+    prospectNumber: null;
+    membershipType: number;
+    membershipStatus: any;
+    cashDrawerId: number;
+    salesPersonId: number;
+    terminalId: string;
+    signatureImage: string;
+    signatureImageType: any;
+    members: Array<any>;
+    offerFees: any;
+    offerPresetRenewalPaymentTerm: any;
+    genericTerms: any;
+    note: any;
+    emergencyContacts: [];
+    enteredBy: string;
 }
 
 export enum AccountMemberGender {

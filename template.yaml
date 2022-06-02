@@ -119,6 +119,34 @@ Resources:
         Sourcemap: true
         EntryPoints: 
         - handlers/post-plan.ts
+  PutCatalogPlanApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: A Lambda function to update plan/product detail in Catalog DynamoDB using PUT Request.
+      CodeUri: kill-bill/
+      Handler: handlers/put-plan.handler
+      MemorySize: 128
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          CATALOGTABLE: !Ref CatalogTable
+      Events:
+        GetPlan:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CatalogApiGateway
+            Path: /catalog
+            Method: put
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - handlers/put-plan.ts
   InboundQueue:
     Type: AWS::SQS::Queue
   OutboundQueue:
