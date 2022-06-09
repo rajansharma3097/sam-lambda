@@ -1,3 +1,5 @@
+import { Member, OfferFees, OfferPresetRenewalPaymentTerm } from './asf-object';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface AccountMember {
     accountId: number;
@@ -10,9 +12,9 @@ export interface AccountMember {
     terminalId: string;
     signatureImage: string;
     signatureImageType: any;
-    members: Array<any>;
-    offerFees: any;
-    offerPresetRenewalPaymentTerm: any;
+    members: Member[];
+    offerFees: OfferFees;
+    offerPresetRenewalPaymentTerm: OfferPresetRenewalPaymentTerm;
     genericTerms: any;
     note: any;
     emergencyContacts: [];

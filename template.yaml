@@ -26,7 +26,7 @@ Parameters:
     Default: us-east-1
   CatalogTable:
     Type: String
-    Default: kb-catalog
+    Default: KBCatalog
 
 Resources:
   CatalogApiGateway:

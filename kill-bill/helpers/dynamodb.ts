@@ -1,5 +1,5 @@
 // Create a DocumentClient that represents the query to add an item
-import DynamoDB from 'aws-sdk/clients/dynamodb';
+import DynamoDB, { Key } from 'aws-sdk/clients/dynamodb';
 
 // Declare some custom client just to illustrate how TS will include only used files into lambda distribution
 export default class CustomDynamoClient {
@@ -14,7 +14,7 @@ export default class CustomDynamoClient {
     async read(id: string) {
         const params = {
             TableName: this.table,
-            Key: { accountId: id },
+            Key: { k: id },
         };
         const data = await this.docClient.get(params).promise();
         return data.Item;
@@ -28,4 +28,14 @@ export default class CustomDynamoClient {
 
         return await this.docClient.put(params).promise();
     }
+
+    // async update(Key: Key, Item: object) {
+    //     const params = {
+    //         TableName: this.table,
+    //         Key,
+    //         AttributeUpdates: Item,
+    //     };
+
+    //     return await this.docClient.update(params).promise();
+    // }
 }

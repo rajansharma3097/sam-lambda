@@ -1,7 +1,7 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
 import CustomDynamoClient from '../helpers/dynamodb';
 
-const catalogTable = process.env.CATALOGTABLE || 'kb-catalog';
+const catalogTable = process.env.CATALOGTABLE || 'KBCatalog';
 
 export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;

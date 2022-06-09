@@ -1,9 +1,8 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { Catalog, CatalogCurrenciesEnum, DurationUnitEnum, PlanBillingPeriodEnum, PriceCurrencyEnum } from 'killbill';
 import CustomDynamoClient from '../helpers/dynamodb';
-import { AccountMember } from '../models/account-member';
+import { extractCatalogObject, setPresetRenewalPlan } from '../helpers/util';
 
-const catalogTable = process.env.CATALOGTABLE || 'kb-catalog';
+const catalogTable = process.env.CATALOGTABLE || 'KBCatalog';
 
 export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyResult> => {
     let response: APIGatewayProxyResult;
@@ -12,12 +11,12 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
             throw new Error(`This endpoint only accepts POST method, you tried: ${event.httpMethod} method.`);
         }
 
-        const body = event.body ? JSON.parse(event.body) : {};
-        if (!body.accountId) {
-            throw new Error('accountId is required!');
+        if (!event.queryStringParameters?.accountId) {
+            throw new Error('Please provide accountId parameter!');
         }
+        const accountId = event.queryStringParameters?.accountId;
+        const body = event.body ? JSON.parse(event.body) : {};
 
-        const accountId = body.accountId;
         const client = new CustomDynamoClient(catalogTable);
         const existedItem = await client.read(accountId);
 
@@ -28,8 +27,14 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
             };
         }
 
-        const catalogObject = extractCatalogObject(body.asfObject);
-        const catalogPostObject = { accountId: body.accountId, ...catalogObject };
+        const catalogObject = extractCatalogObject(accountId, body);
+
+        // check if renewal payment term is set
+        if (body.offerPresetRenewalPaymentTerm != null && body.offerPresetRenewalPaymentTerm != 0) {
+            setPresetRenewalPlan(catalogObject, body);
+        }
+
+        const catalogPostObject = { k: accountId, v: JSON.stringify(catalogObject) };
 
         const isAdded = await client.write(catalogPostObject);
 
@@ -51,56 +56,10 @@ export const handler = async (event: APIGatewayEvent): Promise<APIGatewayProxyRe
             statusCode: 500,
             body: JSON.stringify({
                 message: message,
+                // message: JSON.stringify(err),
             }),
         };
     }
 
     return response;
 };
-
-function extractCatalogObject(asfObject: AccountMember) {
-    return {
-        name: asfObject.accountNumber,
-        effectiveDate: new Date().toISOString(),
-        currencies: [CatalogCurrenciesEnum.USD],
-        products: [
-            {
-                type: 'BASE',
-                name: `PRODUCT-${asfObject.accountId}`,
-                prettyName: `Product for Account ID: ${asfObject.accountId}`,
-                plans: [
-                    {
-                        name: `PLAN-${asfObject.accountId}`,
-                        prettyName: `Plan for Account ID: ${asfObject.accountId}`,
-                        billingPeriod: PlanBillingPeriodEnum.MONTHLY,
-                        phases: [
-                            {
-                                type: asfObject.offerFees.offerContractDates.openEnded ? 'EVERGREEN' : 'FIXEDTERM',
-                                prices: [
-                                    {
-                                        currency: PriceCurrencyEnum.USD,
-                                        value: asfObject.offerFees.recurringFees.perPaymentTotal,
-                                    },
-                                ],
-                                fixedPrices: [],
-                                duration: {
-                                    unit: asfObject.offerFees.offerContractDates.openEnded
-                                        ? DurationUnitEnum.UNLIMITED
-                                        : DurationUnitEnum.MONTHS,
-                                    number: -1,
-                                },
-                                usages: [],
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
-        priceLists: [
-            {
-                name: 'DEFAULT',
-                plans: [`PLAN-${asfObject.accountId}`],
-            },
-        ],
-    } as Catalog;
-}

@@ -4,7 +4,7 @@ import SQS, { SendMessageRequest } from 'aws-sdk/clients/sqs';
 import { getKillBillCredentials } from '../helpers/secretsmanager';
 import { KBSecrets } from '../models/kb-secrets';
 import KillBillClient from '../helpers/killbillclient';
-import { Account, Subscription } from 'killbill';
+import { Account, Catalog, Subscription } from 'killbill';
 import axios, { AxiosError, AxiosResponse } from 'axios';
 
 // Configure the region and version
@@ -42,7 +42,9 @@ async function requestKillBill(memberDetail: AccountMember) {
         isAccountExist = true;
 
         // check if subscription exists
-        subscriptionDetail = await killbillObject.getSubscriptionByKey(memberDetail.accountNumber);
+        subscriptionDetail = await killbillObject.getSubscriptionByKey(
+            `DUES-${memberDetail.accountNumber}-${memberDetail.offerFees.offerContractDates.renewalDate}`,
+        );
         isSubscriptionExist = true;
 
         // Push Data to Outbound Queue
@@ -68,15 +70,6 @@ async function requestKillBill(memberDetail: AccountMember) {
             isAccountCreated = true;
             isAccountExist = true;
             accountDetail = await killbillObject.getAccountByKey(memberDetail.accountNumber);
-
-            // Create KB Subscription
-            // const subscriptionDetail = await createKBSubscription(killbillObject, memberDetail, accountDetail.data);
-
-            // isSubscriptionExist = true;
-            // console.log(subscriptionDetail);
-
-            // Push Data to Outbound Queue
-            // await pushAccountInfoToOutboundQueue(accountDetail.data, subscriptionDetail.data);
         } catch (err) {
             let message = 'Internal server error';
             if (err instanceof AxiosError) {
@@ -114,56 +107,88 @@ async function requestKillBill(memberDetail: AccountMember) {
     }
 
     return false;
-
-    // console.log(killBillRequestObject, headers, endpoint);
-    // await axios
-    //     .post(endpoint, killBillRequestObject, {
-    //         headers: headers,
-    //     })
-    //     .then(async (response: AxiosResponse) => {
-    //         if (response.status === 201) {
-    //             // console.log('kill bill response', response);
-    //             // console.log(response.headers.location);
-    //             const accountData: AxiosResponse<KillBillAccount> = await axios.get(response.headers.location, {
-    //                 headers: headers,
-    //             });
-    //             // console.log('accountData', accountData);
-    //             if (accountData.status === 200) {
-    //                 await pushAccountInfoToOutboundQueue(accountData.data);
-    //             }
-    //         }
-    //     })
-    //     .catch(async (reason: AxiosError<{ message: string }>) => {
-    //         console.log(reason);
-    //         console.log('main catch', reason.response?.data.message);
-    //     });
 }
 
 async function createKBSubscription(killbillObject: KillBillClient, memberDetail: AccountMember, kbAccount: Account) {
     // Hit Catalog API to get Plan Object
-    const catalogResponse = await callCatalogApi(memberDetail, kbAccount);
+    let catalogResponse = await callCatalogApi(memberDetail, kbAccount);
     if (!catalogResponse) {
         throw new Error('Unable to get plan from Catalog API.');
     }
+    catalogResponse = JSON.parse(catalogResponse.v);
     console.log(catalogResponse);
     // Create Subscription for this Account
     const subsRequest = {
         accountId: kbAccount.accountId,
-        externalKey: memberDetail.accountNumber,
+        externalKey: `DUES-${memberDetail.accountNumber}-${memberDetail.offerFees.offerContractDates.renewalDate}`,
         planName: catalogResponse.products[0].plans[0].name,
+        startDate: memberDetail.offerFees.offerContractDates.startDate,
+        billingStartDate: memberDetail.offerFees.offerContractDates.firstPaymentDueDate,
     };
-    return await killbillObject.createSubscription(subsRequest);
+
+    const subsResponse = await killbillObject.createSubscription(subsRequest);
+
+    if (memberDetail.offerPresetRenewalPaymentTerm != null && catalogResponse.products[0].plans[1] != undefined) {
+        await createRenewalSubscription(catalogResponse, killbillObject, memberDetail, kbAccount);
+    }
+
+    return subsResponse;
+}
+
+async function createRenewalSubscription(
+    catalogResponse: Catalog,
+    killbillObject: KillBillClient,
+    memberDetail: AccountMember,
+    kbAccount: Account,
+) {
+    if (
+        catalogResponse == undefined ||
+        catalogResponse.products == undefined ||
+        catalogResponse.products[0].plans == undefined
+    ) {
+        return false;
+    }
+
+    const externalKeyDate = calculateEndDateOfRenewalPlan(memberDetail);
+
+    // Create Subscription for Renewal Plan
+    const renewalSubsRequest = {
+        accountId: kbAccount.accountId,
+        externalKey: `DUES-${memberDetail.accountNumber}-${externalKeyDate}`,
+        planName: catalogResponse.products[0].plans[1].name,
+        startDate: memberDetail.offerFees.offerContractDates.renewalDate,
+        billingStartDate: memberDetail.offerFees.offerContractDates.renewalDate,
+    };
+
+    await killbillObject.createSubscription(renewalSubsRequest);
+}
+
+function calculateEndDateOfRenewalPlan(memberDetail: AccountMember) {
+    // for open-ended
+    if (memberDetail.offerPresetRenewalPaymentTerm.numberOfPayments == 0) {
+        return '2039-12-31';
+    } else {
+        // for term plan
+        const renewalDate = new Date(memberDetail.offerFees.offerContractDates.renewalDate);
+        return addMonths(memberDetail.offerPresetRenewalPaymentTerm.renewalLength, renewalDate);
+    }
+}
+
+function addMonths(numOfMonths: number, renewalDate = new Date()) {
+    const dateCopy = new Date(renewalDate.getTime());
+    dateCopy.setMonth(dateCopy.getMonth() + numOfMonths);
+    const date = dateCopy.toLocaleDateString('en-us', { day: 'numeric' });
+    const month = dateCopy.toLocaleDateString('en-us', { month: 'numeric' });
+    const year = dateCopy.toLocaleDateString('en-us', { year: 'numeric' });
+    return `${year}-${month}-${date}`;
 }
 
 /**
  * Call Catalog API to get plan name
  */
 async function callCatalogApi(memberDetail: AccountMember, kbAccount: Account) {
-    console.log('Endpoint', process.env.API_ENDPOINT);
-    // implement later
-    // const catalogEndpoint =
-    //     process.env.API_ENDPOINT || 'https://7f7jv8azlh.execute-api.us-east-1.amazonaws.com/Prod/catalog';
-    const catalogEndpoint = 'https://7f7jv8azlh.execute-api.us-east-1.amazonaws.com/Prod/catalog';
+    const catalogEndpoint =
+        process.env.API_ENDPOINT || 'https://7f7jv8azlh.execute-api.us-east-1.amazonaws.com/Prod/catalog';
     return await axios
         .post(catalogEndpoint, {
             accountId: kbAccount.accountId,
