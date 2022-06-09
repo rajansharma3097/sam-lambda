@@ -128,8 +128,12 @@ async function createKBSubscription(killbillObject: KillBillClient, memberDetail
 
     const subsResponse = await killbillObject.createSubscription(subsRequest);
 
-    if (memberDetail.offerPresetRenewalPaymentTerm != null && catalogResponse.products[0].plans[1] != undefined) {
-        await createRenewalSubscription(catalogResponse, killbillObject, memberDetail, kbAccount);
+    try {
+        if (memberDetail.offerPresetRenewalPaymentTerm != null && catalogResponse.products[0].plans[1] != undefined) {
+            await createRenewalSubscription(catalogResponse, killbillObject, memberDetail, kbAccount);
+        }
+    } catch (err) {
+        console.log('Unable to create second subscription', err);
     }
 
     return subsResponse;
